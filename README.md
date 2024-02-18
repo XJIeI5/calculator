@@ -3,7 +3,7 @@
 Проект состоит из двух частей: Storage и Computation серверов. На Storage приходят запросы о добавлении математической задачи, он отслеживает серверы вычислений, контроллирует вычисление. На Computation приходит только число и операция, в ответ приходит число.
 
 <!--Установка-->
-## Установка
+# Установка
 ```git clone https://github.com/XJIeI5/calculator.git```
 
 ```go get .```
@@ -36,7 +36,7 @@
 - pc: parallel computations, количество запущенных горутин, по умолчанию 10
 
 <!--Запросы-->
-## Запросы
+# Запросы
 ### Storage сервер
 
 - /regist_compute
@@ -151,3 +151,21 @@
 > возвращает количество незанятых процессов, которые можно использовать для параллельного вычисления на этом сервере
 
 > curl --location 'http://localhost:5000/free_process'
+
+# Пример
+
+```start cmd/compute/server.exe --port=5000```
+
+```start cmd/storage/server.exe --port=3000```
+
+```curl --location 'http://localhost:5000/regist' \
+--header 'Content-Type: application/json' \
+--data '{"addr": "http://localhost:3000"}' ```
+
+```curl --location 'http://localhost:3000/add_expr' \
+--header 'Content-Type: application/json' \
+--data '{"expr": "10 * (2 + 1)"}```
+
+```curl --location 'http://localhost:3000/get_result?id=2146560825'```
+
+Последняя команда должна вернуть 30
