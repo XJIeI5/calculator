@@ -92,7 +92,6 @@ func (c *computationServer) handleExec(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		fmt.Println(res)
 		w.Write([]byte(strconv.FormatFloat(float64(res), 'f', -1, 32)))
 	}
 }
@@ -137,12 +136,18 @@ func (c *computationServer) handleRegist(w http.ResponseWriter, r *http.Request)
 }
 
 func (c *computationServer) beat() {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 1)
 loop:
 	for {
 		select {
 		case <-ticker.C:
-			resp, err := http.Get(fmt.Sprintf("%s/heart", c.storageAddr))
+			data := struct {
+				Addr string `json:"addr"`
+			}{
+				Addr: c.addr,
+			}
+			b, _ := json.Marshal(data)
+			resp, err := http.Post(fmt.Sprintf("%s/heart", c.storageAddr), "application/json", bytes.NewBuffer(b))
 			if resp.StatusCode != http.StatusOK || err != nil {
 				c.storageAddr = ""
 				ticker.Stop()

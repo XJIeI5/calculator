@@ -75,13 +75,14 @@ func newStorage() *storage {
 	}
 
 	go s.calcExpressions()
+	go s.cleanComputationServers()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/add_expr", s.handleAddExpression).Methods("POST")
 	r.HandleFunc("/get_result", s.handleGetResult).Methods("GET")
 	r.HandleFunc("/regist_compute", s.registerComputationServer).Methods("POST")
 	r.HandleFunc("/set_timeout", s.handleSetTimeouts).Methods("POST")
-	r.HandleFunc("/heart", s.handleHeartbeat).Methods("GET")
+	r.HandleFunc("/heart", s.handleHeartbeat).Methods("POST")
 	r.HandleFunc("/get_compute", s.handleGetCompute).Methods("GET")
 
 	s.router = r
@@ -225,17 +226,22 @@ func (s *storage) getMostFreeComputationServer() (string, error) {
 }
 
 func (s *storage) getWorkingComputationServers() []string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	res := make([]string, 0, len(s.computationServers))
-	for addr, t := range s.computationServers {
-		if time.Since(t) <= time.Duration(s.timeouts["__wait"])*time.Millisecond {
-			res = append(res, addr)
-		} else {
-			delete(s.computationServers, addr)
-		}
+	for addr := range s.computationServers {
+		res = append(res, addr)
 	}
 	return res
+}
+
+func (s *storage) cleanComputationServers() {
+	ticker := time.NewTicker(time.Second * 1)
+	for range ticker.C {
+		for addr, t := range s.computationServers {
+			if time.Since(t) > time.Duration(s.timeouts["__wait"])*time.Millisecond {
+				delete(s.computationServers, addr)
+			}
+		}
+	}
 }
 
 func (s *storage) registerComputationServer(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +265,6 @@ func (s *storage) registerComputationServer(w http.ResponseWriter, r *http.Reque
 	defer s.mu.Unlock()
 
 	s.computationServers[registerData.Addr] = time.Now()
-	fmt.Println(s.computationServers)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -286,14 +291,22 @@ func (s *storage) handleSetTimeouts(w http.ResponseWriter, r *http.Request) {
 		}
 		s.timeouts[key] = value
 	}
-	fmt.Println(s.timeouts)
 	w.WriteHeader(http.StatusOK)
 }
 
 func (s *storage) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.computationServers[r.URL.Host] = time.Now()
+	auto := struct {
+		Addr string `json:"addr"`
+	}{}
+	err := json.NewDecoder(r.Body).Decode(&auto)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.computationServers[auto.Addr] = time.Now()
 	w.WriteHeader(http.StatusOK)
 }
 
