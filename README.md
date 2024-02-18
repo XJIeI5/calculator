@@ -3,20 +3,23 @@
 Проект состоит из двух частей: Storage и Computation серверов. На Storage приходят запросы о добавлении математической задачи, он отслеживает серверы вычислений, контроллирует вычисление. На Computation приходит только число и операция, в ответ приходит число.
 
 <!--Установка-->
-```git clone https://github.com/XJIeI5/calculator.git```
-```go get .```
+## Установка
+```git clone https://github.com/XJIeI5/calculator.git
+go get .```
+
 
 <!--Запуск-->
+# Запуск
 ```cd cmd```
 
-## Storage сервер
+### Storage сервер
 ```go run storage/server.go -port=3000```
 
 флаги:
 - host: хост сервера, по умолчанию "http://localhost"
 - port: порт сервера, по умолчанию 8080
 
-## Computation сервер
+### Computation сервер
 ```go run compute/server.go -port=5000 -pc=20```
 
 флаги:
@@ -25,8 +28,8 @@
 - pc: parallel computations, количество запущенных горутин, по умолчанию 10
 
 <!--Запросы-->
-
-## Storage сервер
+## Запросы
+### Storage сервер
 
 > /regist_compute 
 > POST-запрос, ContentType application/json
