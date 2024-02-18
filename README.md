@@ -104,3 +104,43 @@
 > возвращает сервера вычислений и их состояние
 
 > curl --location 'http://localhost:3000/get_compute'
+
+### Computation сервер
+
+- /regist
+
+> POST-запрос, ContentType application/json
+>
+> тело запроса: json {"addr": "*адрес сервера хранения*"}
+>
+> возвращает статус-код
+
+> этот запрос регистрирует сервер вычислений для сервера хранения. теперь этот сервер может быть задействован для вычислений
+
+> curl --location 'http://localhost:5000/regist' \
+> --header 'Content-Type: application/json' \
+> --data '{"addr": "http://localhost:3000"}'
+
+- /exec
+
+> POST-запрос, ContentType application/json
+>
+> тело запроса: json {"op_info": {"a": *первое число*, "b": *второе число*, "op": "*символ операции*"}, "duration": *количество времени в миллисекундах для выполнения операции*}
+>
+> возвращает число
+
+> запрос для подсчета операции. пока поддерживаются только бинарные ( с двумя числами )
+
+> curl --location 'http://localhost:5000/exec' \
+> --header 'Content-Type: application/json' \
+> --data '{"op_info": {"a": 10, "b": 0.5, "op": "*"}, "duration": 500}'
+
+- /free_process
+
+> GET-запрос
+>
+> возвращает число
+
+> возвращает количество незанятых процессов, которые можно использовать для параллельного вычисления на этом сервере
+
+> curl --location 'http://localhost:5000/free_process'
