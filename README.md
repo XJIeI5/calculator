@@ -10,18 +10,25 @@
 
 
 <!--Запуск-->
-# Запуск
-```cd cmd```
+# Компиляция
 
 ### Storage сервер
-```go run storage/server.go -port=3000```
+```cd cmd/storage```
+
+```go build server.go```
+
+```start server.exe -port=3000```
 
 флаги:
 - host: хост сервера, по умолчанию "http://localhost"
 - port: порт сервера, по умолчанию 8080
 
 ### Computation сервер
-```go run compute/server.go -port=5000 -pc=20```
+```cd cmd/compute ```
+
+```go build server.go```
+
+```start server.exe -pc=5 -port=5000```
 
 флаги:
 - host: хост сервера, по умолчанию "http://localhost"
