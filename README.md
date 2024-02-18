@@ -5,6 +5,7 @@
 <!--Установка-->
 ## Установка
 ```git clone https://github.com/XJIeI5/calculator.git```
+
 ```go get .```
 
 
