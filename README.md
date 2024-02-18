@@ -32,7 +32,7 @@
 ## Запросы
 ### Storage сервер
 
--/regist_compute
+- /regist_compute
 
 > POST-запрос, ContentType application/json
 > 
