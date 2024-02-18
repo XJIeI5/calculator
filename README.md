@@ -17,7 +17,7 @@
 
 ```go build server.go```
 
-```start server.exe -port=3000```
+```start server.exe --port=3000```
 
 флаги:
 - host: хост сервера, по умолчанию "http://localhost"
@@ -28,7 +28,7 @@
 
 ```go build server.go```
 
-```start server.exe -pc=5 -port=5000```
+```start server.exe --pc=5 --port=5000```
 
 флаги:
 - host: хост сервера, по умолчанию "http://localhost"
