@@ -154,18 +154,18 @@
 
 # Пример
 
-```start cmd/compute/server.exe --port=5000```
+```start cmd/compute/server.exe --port=5000
 
-```start cmd/storage/server.exe --port=3000```
+start cmd/storage/server.exe --port=3000
 
-```curl --location 'http://localhost:5000/regist' \
+curl --location 'http://localhost:5000/regist' \
 --header 'Content-Type: application/json' \
---data '{"addr": "http://localhost:3000"}' ```
+--data '{"addr": "http://localhost:3000"}'
 
-```curl --location 'http://localhost:3000/add_expr' \
+curl --location 'http://localhost:3000/add_expr' \
 --header 'Content-Type: application/json' \
---data '{"expr": "10 * (2 + 1)"}```
+--data '{"expr": "10 * (2 + 1)"}
 
-```curl --location 'http://localhost:3000/get_result?id=2146560825'```
+curl --location 'http://localhost:3000/get_result?id=2146560825'```
 
 Последняя команда должна вернуть 30
