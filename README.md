@@ -167,7 +167,6 @@ curl --location 'http://localhost:3000/add_expr' \
 --header 'Content-Type: application/json' \
 --data '{"expr": "10 * (2 + 1)"}
 
-curl --location 'http://localhost:3000/get_result?id=2146560825'```
+curl --location 'http://localhost:3000/get_result?id=2146560825'
+```
 
-
-Последняя команда должна вернуть 30
