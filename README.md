@@ -159,14 +159,10 @@ start cmd/compute/server.exe --port=5000
 
 start cmd/storage/server.exe --port=3000
 
-curl --location 'http://localhost:5000/regist' \
---header 'Content-Type: application/json' \
---data '{"addr": "http://localhost:3000"}'
+curl -L 'http://localhost:5000/regist' -H 'Content-Type: application/json' -d '{"addr": "http://localhost:3000"}'
 
-curl --location 'http://localhost:3000/add_expr' \
---header 'Content-Type: application/json' \
---data '{"expr": "10 * (2 + 1)"}
+curl -L 'http://localhost:3000/add_expr' -H 'Content-Type: application/json' -d '{"expr": "10 * (2 + 1)"}'
 
-curl --location 'http://localhost:3000/get_result?id=2146560825'
+curl -L 'http://localhost:3000/get_result?id=2146560825'
 ```
 
