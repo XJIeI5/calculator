@@ -170,10 +170,12 @@ sequenceDiagram
 participant U as User
 participant S as Storage
 participant C as Compute
+
 U->>S: /add_expr
 activate S
 S->>U: id выражения
 deactivate S
+
 loop Пока остаются непосчитанные выражения
 S->>C: /exec
 activate C
@@ -186,10 +188,14 @@ end
 sequenceDiagram
 participant U as User
 participant S as Storage
+
 U->>S: /get_result?id=123
 activate S
 S->>U: результат по id
 deactivate S
+
+classDiagram
+Class01 <|-- AveryLongClass : Cool
 ```
 
 ```mermaid
