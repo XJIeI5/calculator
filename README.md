@@ -220,7 +220,7 @@ class Timeout {
 class OperandTimeout {
   <<Таймаут для одного отдельного операнда>>
   operandSymbol: string
-  duration:          int
+  duration:           int
 }
 Timeout --> OperandTimeout
 ```
