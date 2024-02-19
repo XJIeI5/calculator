@@ -152,6 +152,26 @@
 
 > curl --location 'http://localhost:5000/free_process'
 
+# Диаграмма
+```mermaid
+sequenceDiagram
+  participant S as Storage
+  participant C as Compute
+  C->>V: /regist
+  loop Каждую секунду
+  С->>V: /heart
+
+sequenceDiagram
+  participant U as User
+  participant S as Storage
+  participant C as Compute
+  U->>+S: /add_expr
+  S->>-U: id выражения
+  loop Пока остаются непосчитанные выражения
+  S->>+C: /exec
+  C->>-S: результат /exec
+```
+
 # Пример
 
 ```
