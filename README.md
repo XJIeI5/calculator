@@ -154,30 +154,30 @@
 
 # Диаграмма
 ```mermaid
-sequenceDiagram;
-  participant S as Storage;
-  participant C as Compute;
-  C->>S: /regist;
-  loop Каждую секунду;
-  C->>S: /heart;
-  end;
+sequenceDiagram
+participant S as Storage
+participant C as Compute
+C->>S: /regist
+loop Каждую секунду
+C->>S: /heart
+end
 ```
 
 ```mermaid
-sequenceDiagram;
-  participant U as User;
-  participant S as Storage;
-  participant C as Compute;
-  U->>S: /add_expr;
-  activate S;
-  S->>U: id выражения;
-  deactivate S;
-  loop Пока остаются непосчитанные выражения;
-  S->>C: /exec;
-  activate C;
-  C->>S: результат /exec;
-  deactivate C;
-  end;
+sequenceDiagram
+participant U as User
+participant S as Storage
+participant C as Compute
+U->>S: /add_expr
+activate S
+S->>U: id выражения
+deactivate S
+loop Пока остаются непосчитанные выражения
+S->>C: /exec
+activate C
+C->>S: результат /exec
+deactivate C
+end
 ```
 
 ```mermaid
