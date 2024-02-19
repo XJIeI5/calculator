@@ -246,6 +246,17 @@ class ComputeState {
 }
 ```
 
+```mermaid
+sequenceDiagram
+participant S as Storage
+participant C as Compute
+
+S->>C: /free_process
+activate C
+C->>: количество незанятых в вычислениях горутин
+deactivate C
+```
+
 # Пример
 
 ```
