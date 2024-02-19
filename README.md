@@ -206,9 +206,11 @@ sequenceDiagram
 participant U as User
 participant S as Storage
 
-U->>S: /get_result?id=123
+U->>S: /get_result
+Note over S,U: ?id=123
 activate S
-S->>U: ExpressionState по id выражения
+S->>U: json по id выражения
+Note over S,U: json ExpressionState
 deactivate S
 ```
 ```mermaid
