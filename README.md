@@ -160,7 +160,9 @@ sequenceDiagram
   C->>V: /regist
   loop Каждую секунду
   С->>V: /heart
+```
 
+```mermaid
 sequenceDiagram
   participant U as User
   participant S as Storage
