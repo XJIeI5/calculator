@@ -170,7 +170,6 @@ loop Каждую секунду
 C->>S: /heart
 end
 ```
-
 ```mermaid
 classDiagram
 class AddressInfo {
@@ -212,7 +211,6 @@ activate S
 S->>U: ExpressionState по id выражения
 deactivate S
 ```
-
 ```mermaid
 classDiagram
 class ExpressionState {
@@ -232,7 +230,6 @@ participant S as Storage
 U->>S: /set_timeout
 Note over U,S: json Timeout
 ```
-
 ```mermaid
 classDiagram
 class Timeout {
@@ -258,7 +255,6 @@ activate S
 S->>U: список ComputeState
 deactivate S
 ```
-
 ```mermaid
 classDiagram
 class ComputeState {
