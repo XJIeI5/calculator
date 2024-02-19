@@ -220,7 +220,7 @@ class Timeout {
 class OperandTimeout {
   <<Таймаут для одного отдельного операнда>>
   operandSymbol: string
-  duration:      int
+  duration:          int
 }
 Timeout --> OperandTimeout
 ```
@@ -240,8 +240,8 @@ deactivate S
 classDiagram
 class ComputeState {
   <<состояние одного Compute>>
-  addr:     string
-  state:    string
+  addr:      string
+  state:     string
   lastBeat: time
 }
 ```
