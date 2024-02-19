@@ -191,7 +191,7 @@ participant S as Storage
 
 U->>S: /get_result?id=123
 activate S
-S->>U: результат по id
+S->>U: ExpressionState по id выражения
 deactivate S
 ```
 
@@ -200,6 +200,7 @@ classDiagram
 class ExpressionState {
   <<возвращает /get_result>>
   state string
+
   result float|string
 }
 ```
