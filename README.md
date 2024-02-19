@@ -159,7 +159,7 @@ sequenceDiagram;
   participant C as Compute;
   C->>S: /regist;
   loop Каждую секунду;
-  С->>S: /heart;
+  C->>S: /heart;
   end;
 ```
 
