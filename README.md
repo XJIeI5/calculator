@@ -197,10 +197,10 @@ deactivate S
 
 ```mermaid
 classDiagram
-class Class10 {
-  <<service>>
-  int id
-  size()
+class ExpressionState {
+  <<возвращает /get_result>>
+  state string
+  result float|string
 }
 ```
 
