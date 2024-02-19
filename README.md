@@ -188,7 +188,9 @@ sequenceDiagram;
   activate S;
   S->>U: результат по id
   deactivate S;
+```
 
+```mermaid
 classDiagram
 Class01 <|-- AveryLongClass : Cool
 ```
