@@ -163,6 +163,22 @@ sequenceDiagram;
   end;
 ```
 
+```mermaid
+sequenceDiagram;
+  participant U as User;
+  participant S as Storage;
+  participant C as Compute;
+  U->>S: /add_expr;
+  active S;
+  S->>U: id выражения;
+  deactive S;
+  loop Пока остаются непосчитанные выражения;
+  S->>C: /exec;
+  active C;
+  C->>S: результат /exec;
+  deactive C;
+```
+
 # Пример
 
 ```
