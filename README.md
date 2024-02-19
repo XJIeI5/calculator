@@ -172,12 +172,6 @@ sequenceDiagram;
   active S;
   S->>U: id выражения;
   deactive S;
-  loop Пока остаются непосчитанные выражения;
-  S->>C: /exec;
-  active C;
-  C->>S: результат /exec;
-  deactive C;
-  end;
 ```
 
 # Пример
