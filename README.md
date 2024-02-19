@@ -198,8 +198,8 @@ deactivate S
 ```mermaid
 classDiagram
 Class ExprState {
-State: string
-Result: int, string
+  State: string
+  Result: int, string
 }
 ```
 
