@@ -251,9 +251,9 @@ sequenceDiagram
 participant S as Storage
 participant C as Compute
 
-S->>C: /free_process
+S->>C: /regist
 activate C
-C->>: количество незанятых в вычислениях горутин
+C->>S: возвращает количество незанятых в вычислениях горутин
 deactivate C
 ```
 
