@@ -236,13 +236,14 @@ Note over U,S: json Timeout
 classDiagram
 class Timeout {
   <<Список таймаутов для операндов математических операций>>
+  timeout
 }
 class OperandTimeout {
   <<Таймаут для одного отдельного операнда>>
   operandSymbol: string
   duration:           int
 }
-Timeout --> OperandTimeout
+Timeout "1" --> "n" OperandTimeout
 ```
 
 ### Получение списка воркеров
