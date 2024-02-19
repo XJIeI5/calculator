@@ -180,6 +180,22 @@ sequenceDiagram;
   end;
 ```
 
+```mermaid
+sequenceDiagram;
+  participant U as User;
+  participant S as Storage;
+  U->>S: /get_result?id=123;
+  activate S;
+  S->>U: результат по id
+  deactivate S;
+
+classDiagram;
+  class Result{
+    -state: string
+    -result: int or string
+  }
+```
+
 # Пример
 
 ```
