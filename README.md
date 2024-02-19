@@ -162,11 +162,20 @@ participant C as Compute
 participant U as User
 
 U->>C: /regist
+Note over U,C: json AddressInfo
 C->>S: /regist_compute
+Note over C,S: json AddressInfo
 
 loop Каждую секунду
 C->>S: /heart
 end
+```
+```mermaid
+classDiagram
+class AddressInfo {
+  <<Информация о адрессе сервера>>
+  addr: string
+}
 ```
 
 ### Добавление выражения
@@ -219,7 +228,8 @@ sequenceDiagram
 participant U as User
 participant S as Storage
 
-U->>S: /set_timeout, json: Timeout
+U->>S: /set_timeout
+Note over U,S: json Timeout
 ```
 
 ```mermaid
