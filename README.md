@@ -236,7 +236,7 @@ Note over U,S: json Timeout
 classDiagram
 class Timeout {
   <<Список таймаутов для операндов математических операций>>
-  timeout
+  timeout: список
 }
 class OperandTimeout {
   <<Таймаут для одного отдельного операнда>>
