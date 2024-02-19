@@ -260,6 +260,7 @@ deactivate S
 ```
 ```mermaid
 classDiagram
+direction LR
 class ComputeState {
   <<состояние одного Compute>>
   addr:      string
