@@ -189,11 +189,11 @@ sequenceDiagram;
   S->>U: результат по id
   deactivate S;
 
-classDiagram;
+classDiagram
   class Result{
-    -state: string;
-    -result: int or string;
-  };
+    -state: string
+    -result: int, string
+  }
 ```
 
 # Пример
