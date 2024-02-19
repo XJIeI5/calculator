@@ -197,9 +197,10 @@ deactivate S
 
 ```mermaid
 classDiagram
-Class ExprState {
-  State: string
-  Result: int, string
+class Class10 {
+  <<service>>
+  int id
+  size()
 }
 ```
 
