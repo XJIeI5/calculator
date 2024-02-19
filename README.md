@@ -157,7 +157,9 @@
 sequenceDiagram
 participant S as Storage
 participant C as Compute
+
 C->>S: /regist
+
 loop Каждую секунду
 C->>S: /heart
 end
