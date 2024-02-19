@@ -175,11 +175,11 @@ sequenceDiagram;
 ```
 
 ```mermaid
-graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;
+sequenceDiagram;
+    participant V as Ваня;
+    participant P as Петя;
+    V-)+P: Привет, Петя;
+    P->>-V: Привет, Ваня;
 ```
 
 # Пример
