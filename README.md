@@ -190,7 +190,7 @@ sequenceDiagram;
   deactivate S;
 
 classDiagram;
-  class Result{;
+  class Result{
     -state: string;
     -result: int or string;
   };
