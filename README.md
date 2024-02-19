@@ -169,7 +169,7 @@ sequenceDiagram;
   participant S as Storage;
   participant C as Compute;
   U->>S: /add_expr;
-  active S;
+  activate S;
   S->>U: id выражения;
   deactivate S;
 ```
