@@ -189,8 +189,8 @@ sequenceDiagram;
   S->>U: результат по id
   deactivate S;
 
-classDiagram;
-  class Result{state: string; result: float, string};
+classDiagram
+Class01 <|-- AveryLongClass : Cool
 ```
 
 # Пример
