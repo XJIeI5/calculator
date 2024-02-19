@@ -198,8 +198,8 @@ deactivate S
 ```mermaid
 classDiagram
 class ExpressionState {
-  <<возвращает /get_result>>
-  state string;
+  <<возвращаемое значение /get_result>>
+  state string
   result float|string
 }
 ```
