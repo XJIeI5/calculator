@@ -152,7 +152,9 @@
 
 > curl --location 'http://localhost:5000/free_process'
 
-# Диаграмма
+# Диаграммы
+### Регистрация сервера вычислений
+
 ```mermaid
 sequenceDiagram
 participant S as Storage
@@ -166,6 +168,8 @@ loop Каждую секунду
 C->>S: /heart
 end
 ```
+
+### Добавление выражения
 
 ```mermaid
 sequenceDiagram
@@ -186,6 +190,8 @@ deactivate C
 end
 ```
 
+### Получение выражения
+
 ```mermaid
 sequenceDiagram
 participant U as User
@@ -205,6 +211,8 @@ class ExpressionState {
   result: float, string
 }
 ```
+
+### Задача значений таймаута
 
 ```mermaid
 sequenceDiagram
@@ -227,6 +235,8 @@ class OperandTimeout {
 Timeout --> OperandTimeout
 ```
 
+### Получение списка воркеров
+
 ```mermaid
 sequenceDiagram
 participant U as User
@@ -247,6 +257,8 @@ class ComputeState {
   lastBeat: time
 }
 ```
+
+### Получение свободных вычислительных мощностей сервера вычислений
 
 ```mermaid
 sequenceDiagram
