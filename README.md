@@ -199,9 +199,9 @@ deactivate S
 classDiagram
 class ExpressionState {
   <<возвращаемое значение /get_result>>
+  state:  string
+  result: float, string
 }
-ExpressionState : state:  string
-ExpressionState : result: float|string
 ```
 
 ```mermaid
@@ -215,11 +215,14 @@ U->>S: /set_timeout, json: Timeout
 ```mermaid
 classDiagram
 class Timeout {
-  timeout --> OperandTimeout
+  <<Список таймаутов для операндов математических операций>>
 }
-class OperandTimeout
-OperandTimeout : operandSymbol: string
-OperandTimeout : duration: int
+Timeout ->> OperandTimeout
+class OperandTimeout {
+  <<Таймаут для одного отдельного операнда>>
+  operandSymbol: string
+  duration: int
+}
 ```
 
 # Пример
