@@ -253,7 +253,7 @@ participant C as Compute
 
 S->>C: /regist
 activate C
-C->>S: возвращает количество незанятых в вычислениях горутин
+C->>S: количество незанятых в вычислениях горутин
 deactivate C
 ```
 
