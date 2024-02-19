@@ -217,12 +217,12 @@ classDiagram
 class Timeout {
   <<Список таймаутов для операндов математических операций>>
 }
-Timeout ->> OperandTimeout
 class OperandTimeout {
   <<Таймаут для одного отдельного операнда>>
   operandSymbol: string
   duration: int
 }
+Timeout --> OperandTimeout
 ```
 
 # Пример
