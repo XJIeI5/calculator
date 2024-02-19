@@ -157,9 +157,9 @@
 sequenceDiagram;
   participant S as Storage;
   participant C as Compute;
-  C->>V: /regist;
+  C->>S: /regist;
   loop Каждую секунду;
-  С->>V: /heart;
+  С->>S: /heart;
   end;
 ```
 
