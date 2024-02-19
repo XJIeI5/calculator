@@ -170,6 +170,7 @@ loop Каждую секунду
 C->>S: /heart
 end
 ```
+
 ```mermaid
 classDiagram
 class AddressInfo {
