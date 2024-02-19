@@ -171,7 +171,7 @@ sequenceDiagram;
   U->>S: /add_expr;
   active S;
   S->>U: id выражения;
-  deactive S;
+  deactivate S;
 ```
 
 # Пример
