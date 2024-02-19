@@ -199,8 +199,7 @@ deactivate S
 classDiagram
 class ExpressionState {
   <<возвращает /get_result>>
-  state string
-
+  state string;
   result float|string
 }
 ```
