@@ -177,6 +177,7 @@ sequenceDiagram;
   active C;
   C->>S: результат /exec;
   deactive C;
+  end;
 ```
 
 # Пример
