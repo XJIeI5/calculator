@@ -193,14 +193,14 @@ U->>S: /get_result?id=123
 activate S
 S->>U: результат по id
 deactivate S
-
-classDiagram
-Class01 <|-- AveryLongClass : Cool
 ```
 
 ```mermaid
 classDiagram
-Class01 <|-- AveryLongClass : Cool
+Class ExprState {
+State: string
+Result: int, string
+}
 ```
 
 # Пример
