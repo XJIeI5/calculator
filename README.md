@@ -157,8 +157,10 @@
 sequenceDiagram
 participant S as Storage
 participant C as Compute
+participant U as User
 
-C->>S: /regist
+U->>C: /regist
+C->>S: /regist_compute
 
 loop Каждую секунду
 C->>S: /heart
