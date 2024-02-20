@@ -28,7 +28,7 @@
 
 ### Storage сервер
 ```
-cd cmd/storage
+cd ./cmd/storage
 go build server.go
 start server.exe --port=3000
 cd ../../
@@ -40,7 +40,7 @@ __флаги__:
 
 ### Computation сервер
 ```
-cd cmd/compute 
+cd ./cmd/compute 
 go build server.go
 start server.exe --pc=5 --port=5000
 cd ../../
@@ -284,7 +284,7 @@ sequenceDiagram
 participant S as Storage
 participant C as Compute
 
-S->>C: /regist
+S->>C: /get_compute
 activate C
 C->>S: количество незанятых в вычислениях горутин
 deactivate C
