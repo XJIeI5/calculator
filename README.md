@@ -39,11 +39,12 @@ __флаги__:
 - port: порт сервера, по умолчанию 8080
 
 ### Computation сервер
-```cd cmd/compute ```
-
-```go build server.go```
-
-```start server.exe --pc=5 --port=5000```
+```
+cd cmd/compute 
+go build server.go
+start server.exe --pc=5 --port=5000
+cd ../../
+```
 
 __флаги__:
 - host: хост сервера, по умолчанию "http://localhost"
