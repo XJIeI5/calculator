@@ -75,9 +75,7 @@ __флаги__:
 
 > возвращает id выражения, по запросу /get_result можно получить результат
 
-> curl --location 'http://localhost:3000/add_expr' \
-> --header 'Content-Type: application/json' \
-> --data '{"expr": "1 + 1"}'
+> `curl -L 'http://localhost:8080/add_expr' -H 'Content-Type: application/json' -d '{"expr\": \"10 * (2 + 1)"}'`
 
 - /get_result
   
