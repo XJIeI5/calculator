@@ -27,7 +27,8 @@
 # Сборка
 
 ### Storage сервер
-```cd cmd/storage
+```
+cd cmd/storage
 go build server.go
 start server.exe --port=3000
 cd ../../
