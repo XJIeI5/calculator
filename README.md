@@ -77,7 +77,7 @@ __флаги__:
 
 > возвращает id выражения, по запросу /get_result можно получить результат
 
-> `curl -L 'http://localhost:8080/add_expr' -H 'Content-Type: application/json' -d '{"expr": "10 * (2 + 1)"}'`
+> `curl -L "http://localhost:8080/add_expr" -H "Content-Type: application/json" -d "{\"expr\": \"10 * (2 + 1)\"}"`
 
 - /get_result
   
@@ -89,7 +89,7 @@ __флаги__:
 
 > возвращает состояние вычисления и его результат
 
-> curl --location 'http://localhost:3000/get_result?id=1433202860'
+> `curl -L "http://localhost:8080/get_result?id=2146560825"`
 
 - /set_timeout
   
@@ -101,9 +101,7 @@ __флаги__:
 
 > задает время выполнения различных операций. перезаписывает указанные в теле запроса, оставляет без изменений неуказанные. чтобы изменить время ожидания heartbeat'а от сервера вычислений, *символ операции* должен быть "__wait"
 
-> curl --location 'http://localhost:3000/set_timeout' \
-> --header 'Content-Type: application/json' \
-> --data '{"timeout": {"+": 10000}}'
+> `curl -L "http://localhost:3000/set_timeout" -H "Content-Type: application/json" -d "{\"timeout\": {\"+\": 10000}}"`
 
 - /heart
   
@@ -124,7 +122,7 @@ __флаги__:
 
 > возвращает сервера вычислений и их состояние
 
-> curl --location 'http://localhost:3000/get_compute'
+> `curl -L "http://localhost:3000/get_compute"`
 
 ### Computation сервер
 
@@ -138,9 +136,7 @@ __флаги__:
 
 > этот запрос регистрирует сервер вычислений для сервера хранения. теперь этот сервер может быть задействован для вычислений
 
-> curl --location 'http://localhost:5000/regist' \
-> --header 'Content-Type: application/json' \
-> --data '{"addr": "http://localhost:3000"}'
+> `curl -L "http://localhost:5000/regist" -H "Content-Type: application/json" -d "{\"addr\": \"http://localhost:3000\"}"`
 
 - /exec
 
@@ -152,9 +148,7 @@ __флаги__:
 
 > запрос для подсчета операции. пока поддерживаются только бинарные ( с двумя числами )
 
-> curl --location 'http://localhost:5000/exec' \
-> --header 'Content-Type: application/json' \
-> --data '{"op_info": {"a": 10, "b": 0.5, "op": "*"}, "duration": 500}'
+> `curl -L "http://localhost:5000/exec" -H "Content-Type: application/json" -d "{\"op_info\": {\"a\": 10, \"b\": 0.5, \"op\": \"*\"}, \"duration\": 500}"`
 
 - /free_process
 
@@ -164,7 +158,7 @@ __флаги__:
 
 > возвращает количество незанятых процессов, которые можно использовать для параллельного вычисления на этом сервере
 
-> curl --location 'http://localhost:5000/free_process'
+> `curl -L "http://localhost:5000/free_process"`
 
 # Диаграммы
 ### Регистрация сервера вычислений
