@@ -299,18 +299,18 @@ start cmd/compute/server.exe --port=6000
 
 start cmd/storage/server.exe --port=3000
 
-curl -L 'http://localhost:5000/regist' -H 'Content-Type: application/json' -d '{"addr": "http://localhost:3000"}'
+curl -L "http://localhost:5000/regist" H "Content-Type: application/json" -d "{\"addr\": \"http://localhost:3000\"}"
 
-curl -L 'http://localhost:6000/regist' -H 'Content-Type: application/json' -d '{"addr": "http://localhost:3000"}'
+curl -L "http://localhost:6000/regist" -H "Content-Type: application/json" -d "{\"addr\": \"http://localhost:3000\"}"
 
-curl -L 'http://localhost:3000/set_timeout' -H 'Content-Type: application/json' -d '{"timeout": {"+": 10000}}'
+curl -L "http://localhost:3000/set_timeout" -H "Content-Type: application/json" -d "{\"timeout\": {\"+\": 10000}}"
 
-curl -L 'http://localhost:3000/add_expr' -H 'Content-Type: application/json' -d '{"expr": "10 * (2 + 1)"}'
+curl -L "http://localhost:3000/add_expr" -H "Content-Type: application/json" -d "{\"expr\": \"10 * (2 + 1)\"}"
 
-curl -L 'http://localhost:3000/get_result?id=2146560825'
+curl -L "http://localhost:3000/get_result?id=2146560825"
 
-curl -L 'http://localhost:3000/add_expr' -H 'Content-Type: application/json' -d '{"expr": "30 + 0.5"}'
+curl -L "http://localhost:3000/add_expr" -H "Content-Type: application/json" -d "{\"expr\": \"30 + 0.5\"}"
 
-curl -L 'http://localhost:3000/get_result?id=2146560825'
+curl -L "http://localhost:3000/get_result?id=2146560825"
 ```
 
