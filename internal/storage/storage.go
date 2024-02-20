@@ -80,7 +80,7 @@ func newStorage() *storage {
 	r := mux.NewRouter()
 	r.HandleFunc("/add_expr", s.handleAddExpression).Methods("POST")
 	r.HandleFunc("/get_result", s.handleGetResult).Methods("GET")
-	r.HandleFunc("/regist_compute", s.registerComputationServer).Methods("POST")
+	r.HandleFunc("/regist_compute", s.handleRegistCompute).Methods("POST")
 	r.HandleFunc("/set_timeout", s.handleSetTimeouts).Methods("POST")
 	r.HandleFunc("/heart", s.handleHeartbeat).Methods("POST")
 	r.HandleFunc("/get_compute", s.handleGetCompute).Methods("GET")
@@ -168,7 +168,10 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	st, _ := s.expressions.Load(exprHash(id))
+	st, ok := s.expressions.Load(exprHash(id))
+	if !ok {
+		http.Error(w, fmt.Sprintf("no expr with id %d", id), http.StatusBadRequest)
+	}
 	data, err := json.Marshal(st)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -244,7 +247,7 @@ func (s *storage) cleanComputationServers() {
 	}
 }
 
-func (s *storage) registerComputationServer(w http.ResponseWriter, r *http.Request) {
+func (s *storage) handleRegistCompute(w http.ResponseWriter, r *http.Request) {
 	if t := r.Header.Get("Content-Type"); t != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
