@@ -284,7 +284,7 @@ sequenceDiagram
 participant S as Storage
 participant C as Compute
 
-S->>C: /regist
+S->>C: /get_compute
 activate C
 C->>S: количество незанятых в вычислениях горутин
 deactivate C
