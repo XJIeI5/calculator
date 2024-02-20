@@ -27,11 +27,11 @@
 # Сборка
 
 ### Storage сервер
-```cd cmd/storage```
-
-```go build server.go```
-
-```start server.exe --port=3000```
+```cd cmd/storage
+go build server.go
+start server.exe --port=3000
+cd ../../
+```
 
 __флаги__:
 - host: хост сервера, по умолчанию "http://localhost"
