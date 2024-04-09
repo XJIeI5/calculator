@@ -45,7 +45,7 @@ func (s *storage) handleGetCompute(w http.ResponseWriter, r *http.Request) {
 	states := make([]compState, 0, len(s.computationServers))
 	for _, addr := range s.getWorkingComputationServers() {
 		st := compState{Addr: addr, LastBeat: s.computationServers[addr]}
-		if time.Since(s.computationServers[addr]) > 6*time.Second {
+		if time.Since(s.computationServers[addr]) > time.Duration(s.timeouts["__wait"])*time.Millisecond {
 			st.State = "lost connection"
 		} else {
 			st.State = "available"
