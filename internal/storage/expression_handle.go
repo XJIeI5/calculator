@@ -11,12 +11,55 @@ import (
 
 	op "github.com/XJIeI5/calculator/internal/operation"
 	"github.com/XJIeI5/calculator/internal/parser"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/informitas/stack"
 )
+
+func validateToken(bearerToken string) (*jwt.Token, error) {
+	tokenString := bearerToken
+	token, err := jwt.ParseWithClaims(tokenString, &user{}, func(t *jwt.Token) (interface{}, error) {
+		return key, nil
+	})
+	return token, err
+}
+
+func (s *storage) storeExpressionState(status state, result interface{}, bearerToken string, hash exprHash) {
+
+	var q string = `
+	INSERT INTO expressions (status, result, userId, hash) VALUES ($1, $2, $3, $4)
+	`
+	token, err := validateToken(bearerToken)
+	if err != nil {
+		panic(err)
+	}
+	if !token.Valid {
+		panic("unvalid token")
+	}
+
+	user := token.Claims.(*user)
+
+	if _, err = s.db.Exec(q, status, result, user.id, hash); err != nil {
+		panic(err)
+	}
+}
+
+func (s *storage) updateExpressionState(status state, result interface{}, hash exprHash) {
+	var q string = `
+	UPDATE expressions SET status = $1, result = $2 WHERE hash = $4
+	`
+
+	if _, err := s.db.Exec(q, status, result, hash); err != nil {
+		panic(err)
+	}
+}
 
 func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 	if t := r.Header.Get("Content-Type"); t != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if t := r.Header.Get("Authorization"); t == "" {
+		http.Error(w, "unknown user", http.StatusBadRequest)
 		return
 	}
 	if len(s.computationServers) == 0 {
@@ -24,20 +67,20 @@ func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expr := struct {
+	_expr := struct {
 		Value string `json:"expr"`
 	}{}
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&expr)
+	err := decoder.Decode(&_expr)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	parsedExpr, err := parser.ParseToPostfix(expr.Value)
+	parsedExpr, err := parser.ParseToPostfix(_expr.Value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -48,8 +91,12 @@ func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(strconv.FormatInt(int64(id), 10)))
 		return
 	}
+	bearerToken := r.Header.Get("Authorization")
 	s.expressions.Store(id, &expressionState{State: in_progress, Result: nil})
-	go s.exprQueue.Enqueue(postfixExpr(parsedExpr))
+	go s.exprQueue.Enqueue(expr{postfixExpr: postfixExpr(parsedExpr), bearerToken: bearerToken})
+
+	go s.storeExpressionState(in_progress, nil, bearerToken, id)
+
 	w.Write([]byte(strconv.FormatInt(int64(id), 10)))
 }
 
@@ -64,6 +111,7 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 	st, ok := s.expressions.Load(exprHash(id))
 	if !ok {
 		http.Error(w, fmt.Sprintf("no expr with id %d", id), http.StatusBadRequest)
+		return
 	}
 	data, err := json.Marshal(st)
 	if err != nil {
@@ -75,28 +123,32 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 
 func (s *storage) calcExpressions() {
 	for {
-		expr, err := s.exprQueue.Dequeue()
+		_expr, err := s.exprQueue.Dequeue()
 		if err != nil {
 			continue
 		}
 		// waiting for expression then start calculation
 		go func() {
-			hashSum := getHash(string(expr))
+			hashSum := getHash(string(_expr.postfixExpr))
 			compAddr, err := s.getMostFreeComputationServer()
 			if err != nil {
 				s.expressions.Store(hashSum, &expressionState{State: has_error, Result: err.Error()})
+				go s.updateExpressionState(has_error, err.Error(), hashSum)
 				return
 			}
 			fmt.Println(compAddr)
-			errs, res := s.calculateInSync(compAddr, expr)
+			errs, res := s.calculateInSync(compAddr, _expr.postfixExpr)
 			for err := range errs {
 				if err != nil {
 					s.expressions.Store(hashSum, &expressionState{State: has_error, Result: err.Error()})
+					go s.updateExpressionState(has_error, err.Error(), hashSum)
 					return
 				}
 			}
 
-			s.expressions.Store(hashSum, &expressionState{State: ok, Result: <-res})
+			result := <-res
+			s.expressions.Store(hashSum, &expressionState{State: ok, Result: result})
+			go s.updateExpressionState(ok, result, hashSum)
 		}()
 	}
 }
