@@ -1,3 +1,4 @@
 /.vscode
 /cmd/compute/server.exe
 /cmd/storage/server.exe
+store.db
