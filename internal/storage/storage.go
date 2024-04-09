@@ -2,6 +2,7 @@ package storage
 
 import (
 	"crypto/sha1"
+	"database/sql"
 	"encoding/binary"
 	"fmt"
 	"net/http"
@@ -10,28 +11,32 @@ import (
 	"time"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 
+// TODO: remove expr struct from exprQueue
 type storage struct {
+	db *sql.DB
+
 	router             *mux.Router
 	computationServers map[string]time.Time
 	timeouts           map[string]int
 	expressions        *sync.Map
 
-	exprQueue *datastructs.Queue[postfixExpr]
+	exprQueue *datastructs.Queue[expr]
 
 	mu sync.RWMutex
 }
 
-func newStorage() *storage {
+func newStorage(db *sql.DB) *storage {
 	s := &storage{
+		db:                 db,
 		expressions:        &sync.Map{},
 		computationServers: make(map[string]time.Time, 0),
 		timeouts:           map[string]int{"+": 500, "*": 500, "/": 500, "-": 500, "__wait": 10000},
-		exprQueue:          datastructs.NewQueue[postfixExpr](10),
+		exprQueue:          datastructs.NewQueue[expr](10),
 	}
-
 	// background processes
 	go s.calcExpressions()
 	go s.cleanComputationServers()
@@ -46,6 +51,9 @@ func newStorage() *storage {
 	r.HandleFunc("/get_compute", s.handleGetCompute).Methods("GET")
 	// timeout handle
 	r.HandleFunc("/set_timeout", s.handleSetTimeouts).Methods("POST")
+	// login
+	r.HandleFunc("/regist_user", s.handleRegister).Methods("POST")
+	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 
 	s.router = r
 
@@ -56,7 +64,7 @@ func (s *storage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func GetServer(addr string, port int) *http.Server {
+func GetServer(addr string, port int, db *sql.DB) *http.Server {
 	var _addr string
 	if strings.Contains(addr, "localhost") || strings.Contains(addr, "127.0.0.1") {
 		_addr = fmt.Sprintf(":%d", port)
@@ -65,7 +73,7 @@ func GetServer(addr string, port int) *http.Server {
 	}
 	return &http.Server{
 		Addr:    _addr,
-		Handler: newStorage(),
+		Handler: newStorage(db),
 	}
 }
 
@@ -86,7 +94,21 @@ const (
 	ok          state = "ok"
 )
 
+var (
+	key []byte
+)
+
 type expressionState struct {
 	State  state       `json:"state"`
 	Result interface{} `json:"result"`
+}
+
+type expr struct {
+	postfixExpr
+	bearerToken string
+}
+
+type user struct {
+	id int
+	jwt.StandardClaims
 }
