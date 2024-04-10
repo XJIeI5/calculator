@@ -18,30 +18,44 @@ import (
 
 func validateToken(bearerToken string) (*jwt.Token, error) {
 	tokenString := bearerToken
-	token, err := jwt.ParseWithClaims(tokenString, &user{}, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		return key, nil
 	})
 	return token, err
 }
 
-func storeExpressionState(db *sql.DB, status state, result interface{}, bearerToken string, hash exprHash) {
-
-	var q string = `
-	INSERT INTO expressions (status, result, userId, hash) VALUES ($1, $2, $3, $4)
-	`
+func getUserId(bearerToken string) (int, error) {
 	token, err := validateToken(bearerToken)
+	if err != nil {
+		return 0, err
+	}
+	if !token.Valid {
+		return 0, err
+	}
+
+	user := token.Claims.(jwt.MapClaims)
+	id, err := strconv.Atoi(user["id"].(string))
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func storeExpressionState(db *sql.DB, status state, result interface{}, bearerToken string, _expr postfixExpr) (int64, error) {
+	var q string = `
+	INSERT INTO expressions (status, result, userId, hash, postfixExpression) VALUES ($1, $2, $3, $4, $5)
+	`
+
+	id, err := getUserId(bearerToken)
 	if err != nil {
 		panic(err)
 	}
-	if !token.Valid {
-		panic("unvalid token")
-	}
 
-	user := token.Claims.(*user)
-
-	if _, err = db.Exec(q, status, result, user.id, hash); err != nil {
+	res, err := db.Exec(q, status, result, id, getHash(string(_expr)), _expr)
+	if err != nil {
 		panic(err)
 	}
+	return res.LastInsertId()
 }
 
 func updateExpressionState(db *sql.DB, status state, result interface{}, hash exprHash) {
@@ -54,30 +68,29 @@ func updateExpressionState(db *sql.DB, status state, result interface{}, hash ex
 	}
 }
 
-func checkExpressionExists(db *sql.DB, hash exprHash) bool {
+func checkExpressionExists(db *sql.DB, hash exprHash, bearerToken string) (int64, error) {
 	var q string = `
-	SELECT status FROM expressions WHERE hash = $1
+	SELECT id FROM expressions WHERE hash = $1 AND userId = $2
 	`
-	var st state
-	err := db.QueryRow(q, hash).Scan(&st)
+
+	userId, err := getUserId(bearerToken)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			panic(err)
-		} else {
-			return false
-		}
+		panic(err)
 	}
-	return true
+
+	var id int64
+	err = db.QueryRow(q, hash, userId).Scan(&id)
+	return id, err
 }
 
-func getExpressionState(db *sql.DB, hash exprHash) (expressionState, error) {
+func getExpressionState(db *sql.DB, id int) (expressionState, error) {
 	var q string = `
-	SELECT status, result FROM expressions WHERE hash = $1`
+	SELECT status, result FROM expressions WHERE id = $1`
 	var (
 		st     state
 		result string
 	)
-	if err := db.QueryRow(q, int(hash)).Scan(&st, &result); err != nil {
+	if err := db.QueryRow(q, id).Scan(&st, &result); err != nil {
 		return expressionState{}, err
 	}
 	return expressionState{State: st, Result: result}, nil
@@ -116,16 +129,21 @@ func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := getHash(parsedExpr)
-	if checkExpressionExists(s.db, id) {
-		w.Write([]byte(strconv.FormatInt(int64(id), 10)))
+	hash := getHash(parsedExpr)
+	bearerToken := r.Header.Get("Authorization")
+
+	if id, err := checkExpressionExists(s.db, hash, bearerToken); err == nil {
+		w.Write([]byte(strconv.FormatInt(id, 10)))
+		fmt.Println("again")
 		return
 	}
-	bearerToken := r.Header.Get("Authorization")
-	go s.exprQueue.Enqueue(expr{postfixExpr: postfixExpr(parsedExpr), bearerToken: bearerToken})
+	go s.exprQueue.Enqueue(postfixExpr(parsedExpr))
 
-	go storeExpressionState(s.db, in_progress, nil, bearerToken, id)
-
+	id, err := storeExpressionState(s.db, in_progress, nil, bearerToken, postfixExpr(parsedExpr))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Write([]byte(strconv.FormatInt(int64(id), 10)))
 }
 
@@ -137,7 +155,7 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	st, err := getExpressionState(s.db, exprHash(id))
+	st, err := getExpressionState(s.db, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("no expr with id %d", id), http.StatusBadRequest)
 		return
@@ -158,14 +176,14 @@ func (s *storage) calcExpressions() {
 		}
 		// waiting for expression then start calculation
 		go func() {
-			hashSum := getHash(string(_expr.postfixExpr))
+			hashSum := getHash(string(_expr))
 			compAddr, err := s.getMostFreeComputationServer()
 			if err != nil {
 				updateExpressionState(s.db, has_error, err.Error(), hashSum)
 				return
 			}
 			fmt.Println(compAddr)
-			errs, res := s.calculateInSync(compAddr, _expr.postfixExpr)
+			errs, res := s.calculateInSync(compAddr, _expr)
 			for err := range errs {
 				if err != nil {
 					updateExpressionState(s.db, has_error, err.Error(), hashSum)

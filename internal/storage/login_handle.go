@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -65,13 +66,12 @@ func (s *storage) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var tokenClaims user = user{
-		id: id,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(30 * 24 * time.Hour).Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":  strconv.Itoa(id),
+		"nbf": time.Now().Unix(),
+		"exp": time.Now().Add(30 * 24 * time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+	})
 	tokenString, err := token.SignedString(key)
 
 	if err != nil {
