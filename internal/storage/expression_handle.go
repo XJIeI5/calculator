@@ -180,6 +180,7 @@ func (s *storage) calcExpressions() {
 			compAddr, err := s.getMostFreeComputationServer()
 			if err != nil {
 				updateExpressionState(s.db, has_error, err.Error(), hashSum)
+				s.exprQueue.Enqueue(_expr)
 				return
 			}
 			fmt.Println(compAddr)
