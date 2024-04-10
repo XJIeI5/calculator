@@ -11,7 +11,6 @@ import (
 	"time"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 
@@ -23,9 +22,16 @@ type storage struct {
 	computationServers map[string]time.Time
 	timeouts           map[string]int
 
-	exprQueue *datastructs.Queue[expr]
+	exprQueue *datastructs.Queue[postfixExpr]
 
 	mu sync.RWMutex
+}
+
+func getInProcessExpressions(db *sql.DB) []postfixExpr {
+	var _ string = `
+	SELECT 
+	`
+	return []postfixExpr{}
 }
 
 func newStorage(db *sql.DB) *storage {
@@ -33,7 +39,7 @@ func newStorage(db *sql.DB) *storage {
 		db:                 db,
 		computationServers: make(map[string]time.Time, 0),
 		timeouts:           map[string]int{"+": 500, "*": 500, "/": 500, "-": 500, "__wait": 10000},
-		exprQueue:          datastructs.NewQueue[expr](10),
+		exprQueue:          datastructs.NewQueue[postfixExpr](10),
 	}
 	// background processes
 	go s.calcExpressions()
@@ -93,20 +99,10 @@ const (
 )
 
 var (
-	key []byte
+	key []byte = []byte("secret")
 )
 
 type expressionState struct {
 	State  state       `json:"state"`
 	Result interface{} `json:"result"`
-}
-
-type expr struct {
-	postfixExpr
-	bearerToken string
-}
-
-type user struct {
-	id int
-	jwt.StandardClaims
 }
