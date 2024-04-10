@@ -25,7 +25,8 @@ func createTables(ctx context.Context, db *sql.DB) error {
 		expressionsTable = `
 		CREATE TABLE IF NOT EXISTS expressions(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			hash INTEGER NOT NULL UNIQUE,
+			hash INTEGER NOT NULL,
+			postfixExpression TEXT,
 			userId INTEGER NOT NULL,
 			status TEXT,
 			result TEXT,
