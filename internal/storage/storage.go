@@ -22,7 +22,6 @@ type storage struct {
 	router             *mux.Router
 	computationServers map[string]time.Time
 	timeouts           map[string]int
-	expressions        *sync.Map
 
 	exprQueue *datastructs.Queue[expr]
 
@@ -32,7 +31,6 @@ type storage struct {
 func newStorage(db *sql.DB) *storage {
 	s := &storage{
 		db:                 db,
-		expressions:        &sync.Map{},
 		computationServers: make(map[string]time.Time, 0),
 		timeouts:           map[string]int{"+": 500, "*": 500, "/": 500, "-": 500, "__wait": 10000},
 		exprQueue:          datastructs.NewQueue[expr](10),

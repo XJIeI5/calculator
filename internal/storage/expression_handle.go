@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,7 +24,7 @@ func validateToken(bearerToken string) (*jwt.Token, error) {
 	return token, err
 }
 
-func (s *storage) storeExpressionState(status state, result interface{}, bearerToken string, hash exprHash) {
+func storeExpressionState(db *sql.DB, status state, result interface{}, bearerToken string, hash exprHash) {
 
 	var q string = `
 	INSERT INTO expressions (status, result, userId, hash) VALUES ($1, $2, $3, $4)
@@ -38,19 +39,48 @@ func (s *storage) storeExpressionState(status state, result interface{}, bearerT
 
 	user := token.Claims.(*user)
 
-	if _, err = s.db.Exec(q, status, result, user.id, hash); err != nil {
+	if _, err = db.Exec(q, status, result, user.id, hash); err != nil {
 		panic(err)
 	}
 }
 
-func (s *storage) updateExpressionState(status state, result interface{}, hash exprHash) {
+func updateExpressionState(db *sql.DB, status state, result interface{}, hash exprHash) {
 	var q string = `
 	UPDATE expressions SET status = $1, result = $2 WHERE hash = $4
 	`
 
-	if _, err := s.db.Exec(q, status, result, hash); err != nil {
+	if _, err := db.Exec(q, status, result, hash); err != nil {
 		panic(err)
 	}
+}
+
+func checkExpressionExists(db *sql.DB, hash exprHash) bool {
+	var q string = `
+	SELECT status FROM expressions WHERE hash = $1
+	`
+	var st state
+	err := db.QueryRow(q, hash).Scan(&st)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			panic(err)
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
+func getExpressionState(db *sql.DB, hash exprHash) (expressionState, error) {
+	var q string = `
+	SELECT status, result FROM expressions WHERE hash = $1`
+	var (
+		st     state
+		result string
+	)
+	if err := db.QueryRow(q, int(hash)).Scan(&st, &result); err != nil {
+		return expressionState{}, err
+	}
+	return expressionState{State: st, Result: result}, nil
 }
 
 func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
@@ -87,15 +117,14 @@ func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := getHash(parsedExpr)
-	if _, ok := s.expressions.Load(id); ok {
+	if checkExpressionExists(s.db, id) {
 		w.Write([]byte(strconv.FormatInt(int64(id), 10)))
 		return
 	}
 	bearerToken := r.Header.Get("Authorization")
-	s.expressions.Store(id, &expressionState{State: in_progress, Result: nil})
 	go s.exprQueue.Enqueue(expr{postfixExpr: postfixExpr(parsedExpr), bearerToken: bearerToken})
 
-	go s.storeExpressionState(in_progress, nil, bearerToken, id)
+	go storeExpressionState(s.db, in_progress, nil, bearerToken, id)
 
 	w.Write([]byte(strconv.FormatInt(int64(id), 10)))
 }
@@ -108,8 +137,8 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	st, ok := s.expressions.Load(exprHash(id))
-	if !ok {
+	st, err := getExpressionState(s.db, exprHash(id))
+	if err != nil {
 		http.Error(w, fmt.Sprintf("no expr with id %d", id), http.StatusBadRequest)
 		return
 	}
@@ -132,23 +161,20 @@ func (s *storage) calcExpressions() {
 			hashSum := getHash(string(_expr.postfixExpr))
 			compAddr, err := s.getMostFreeComputationServer()
 			if err != nil {
-				s.expressions.Store(hashSum, &expressionState{State: has_error, Result: err.Error()})
-				go s.updateExpressionState(has_error, err.Error(), hashSum)
+				updateExpressionState(s.db, has_error, err.Error(), hashSum)
 				return
 			}
 			fmt.Println(compAddr)
 			errs, res := s.calculateInSync(compAddr, _expr.postfixExpr)
 			for err := range errs {
 				if err != nil {
-					s.expressions.Store(hashSum, &expressionState{State: has_error, Result: err.Error()})
-					go s.updateExpressionState(has_error, err.Error(), hashSum)
+					updateExpressionState(s.db, has_error, err.Error(), hashSum)
 					return
 				}
 			}
 
 			result := <-res
-			s.expressions.Store(hashSum, &expressionState{State: ok, Result: result})
-			go s.updateExpressionState(ok, result, hashSum)
+			updateExpressionState(s.db, ok, result, hashSum)
 		}()
 	}
 }
@@ -180,7 +206,7 @@ func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr) (<-ch
 			} else {
 				operand := parser.GetOperand(expr[i:])
 				if operand == nil {
-					errs <- fmt.Errorf("unknown operand '%s'", operand.Symbol())
+					errs <- fmt.Errorf("unknown operand")
 					return
 				}
 				skip = len(operand.Symbol()) - 1
