@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,89 +11,8 @@ import (
 
 	op "github.com/XJIeI5/calculator/internal/operation"
 	"github.com/XJIeI5/calculator/internal/parser"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/informitas/stack"
 )
-
-func validateToken(bearerToken string) (*jwt.Token, error) {
-	tokenString := bearerToken
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-		return key, nil
-	})
-	return token, err
-}
-
-func getUserId(bearerToken string) (int, error) {
-	token, err := validateToken(bearerToken)
-	if err != nil {
-		return 0, err
-	}
-	if !token.Valid {
-		return 0, err
-	}
-
-	user := token.Claims.(jwt.MapClaims)
-	id, err := strconv.Atoi(user["id"].(string))
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
-func storeExpressionState(db *sql.DB, status state, result interface{}, bearerToken string, _expr postfixExpr) (int64, error) {
-	var q string = `
-	INSERT INTO expressions (status, result, userId, hash, postfixExpression) VALUES ($1, $2, $3, $4, $5)
-	`
-
-	id, err := getUserId(bearerToken)
-	if err != nil {
-		panic(err)
-	}
-
-	res, err := db.Exec(q, status, result, id, getHash(string(_expr)), _expr)
-	if err != nil {
-		panic(err)
-	}
-	return res.LastInsertId()
-}
-
-func updateExpressionState(db *sql.DB, status state, result interface{}, hash exprHash) {
-	var q string = `
-	UPDATE expressions SET status = $1, result = $2 WHERE hash = $4
-	`
-
-	if _, err := db.Exec(q, status, result, hash); err != nil {
-		panic(err)
-	}
-}
-
-func checkExpressionExists(db *sql.DB, hash exprHash, bearerToken string) (int64, error) {
-	var q string = `
-	SELECT id FROM expressions WHERE hash = $1 AND userId = $2
-	`
-
-	userId, err := getUserId(bearerToken)
-	if err != nil {
-		panic(err)
-	}
-
-	var id int64
-	err = db.QueryRow(q, hash, userId).Scan(&id)
-	return id, err
-}
-
-func getExpressionState(db *sql.DB, id int) (expressionState, error) {
-	var q string = `
-	SELECT status, result FROM expressions WHERE id = $1`
-	var (
-		st     state
-		result string
-	)
-	if err := db.QueryRow(q, id).Scan(&st, &result); err != nil {
-		return expressionState{}, err
-	}
-	return expressionState{State: st, Result: result}, nil
-}
 
 func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 	if t := r.Header.Get("Content-Type"); t != "application/json" {
@@ -137,7 +55,13 @@ func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("again")
 		return
 	}
-	go s.exprQueue.Enqueue(postfixExpr(parsedExpr))
+	go func() {
+		userId, err := getUserId(bearerToken)
+		if err != nil {
+			panic(err)
+		}
+		s.exprQueue.Enqueue(expr{postfixExpr: postfixExpr(parsedExpr), userId: userId})
+	}()
 
 	id, err := storeExpressionState(s.db, in_progress, nil, bearerToken, postfixExpr(parsedExpr))
 	if err != nil {
@@ -176,7 +100,7 @@ func (s *storage) calcExpressions() {
 		}
 		// waiting for expression then start calculation
 		go func() {
-			hashSum := getHash(string(_expr))
+			hashSum := getHash(string(_expr.postfixExpr))
 			compAddr, err := s.getMostFreeComputationServer()
 			if err != nil {
 				updateExpressionState(s.db, has_error, err.Error(), hashSum)
@@ -184,7 +108,7 @@ func (s *storage) calcExpressions() {
 				return
 			}
 			fmt.Println(compAddr)
-			errs, res := s.calculateInSync(compAddr, _expr)
+			errs, res := s.calculateInSync(compAddr, _expr.postfixExpr, _expr.userId)
 			for err := range errs {
 				if err != nil {
 					updateExpressionState(s.db, has_error, err.Error(), hashSum)
@@ -198,7 +122,7 @@ func (s *storage) calcExpressions() {
 	}
 }
 
-func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr) (<-chan error, <-chan float32) {
+func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr, userId int) (<-chan error, <-chan float32) {
 	errs := make(chan error)
 	out := make(chan float32, 1)
 	go func(expr string) {
@@ -229,11 +153,12 @@ func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr) (<-ch
 					return
 				}
 				skip = len(operand.Symbol()) - 1
-				if duration, ok := s.timeouts[string(r)]; ok {
+				duration, err := getOperandTime(s.db, string(r), userId)
+				if err == nil {
 					second, _ := locals.Pop()
 					first, _ := locals.Pop()
 					info := op.BinaryOperationInfo{A: <-first, B: <-second, Op: operand.Symbol()}
-					res, err := calculateBinary(addrCompServer, duration, info)
+					res, err := calculateBinary(addrCompServer, int(duration.Milliseconds()), info)
 					if err != nil {
 						errs <- err
 						return
