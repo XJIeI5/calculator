@@ -45,7 +45,11 @@ func (s *storage) handleGetCompute(w http.ResponseWriter, r *http.Request) {
 	states := make([]compState, 0, len(s.computationServers))
 	for _, addr := range s.getWorkingComputationServers() {
 		st := compState{Addr: addr, LastBeat: s.computationServers[addr]}
-		if time.Since(s.computationServers[addr]) > time.Duration(s.timeouts["__wait"])*time.Millisecond {
+		waitTime, err := getWaitTime(s.db)
+		if err != nil {
+			panic(err)
+		}
+		if time.Since(s.computationServers[addr]) > waitTime {
 			st.State = "lost connection"
 		} else {
 			st.State = "available"
@@ -137,7 +141,11 @@ func (s *storage) cleanComputationServers() {
 	ticker := time.NewTicker(time.Second * 1)
 	for range ticker.C {
 		for addr, t := range s.computationServers {
-			if time.Since(t) > time.Duration(s.timeouts["__wait"])*time.Millisecond {
+			waitTime, err := getWaitTime(s.db)
+			if err != nil {
+				panic(err)
+			}
+			if time.Since(t) > waitTime {
 				delete(s.computationServers, addr)
 			}
 		}
