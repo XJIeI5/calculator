@@ -24,8 +24,18 @@ func (s *storage) handleRegister(w http.ResponseWriter, r *http.Request) {
 	q := `
 	INSERT INTO users (login, hashedPassword) VALUES ($1, $2)
 	`
-	if _, err := s.db.Exec(q, register.Login, register.Password); err != nil {
+
+	res, err := s.db.Exec(q, register.Login, register.Password)
+	if err != nil {
 		panic(err)
+	}
+	timeouts := map[string]int{"+": 500, "*": 500, "/": 500, "-": 500}
+	for operand, value := range timeouts {
+		userId, err := res.LastInsertId()
+		if err != nil {
+			panic(err)
+		}
+		storeTimeout(s.db, operand, value, int(userId))
 	}
 }
 
