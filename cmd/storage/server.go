@@ -38,7 +38,10 @@ func createTables(ctx context.Context, db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS timeouts(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			type TEXT,
-			value INTEGER NOT NULL
+			value INTEGER NOT NULL,
+			userId INTEGER NOT NULL,
+
+			FOREIGN KEY (userId) REFERENCES users (id)
 		);`
 	)
 
