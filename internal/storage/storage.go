@@ -20,33 +20,36 @@ type storage struct {
 
 	router             *mux.Router
 	computationServers map[string]time.Time
-	timeouts           map[string]int
 
-	exprQueue *datastructs.Queue[postfixExpr]
+	exprQueue *datastructs.Queue[expr]
 
 	mu sync.RWMutex
 }
 
-func getInProcessExpressions(db *sql.DB) ([]postfixExpr, error) {
+func getInProcessExpressions(db *sql.DB) ([]expr, error) {
 	var q string = `
-	SELECT postfixExpression FROM expressions WHERE status = $1
+	SELECT postfixExpression, userId FROM expressions WHERE status = $1
 	`
 	rows, err := db.Query(q, in_progress)
 	if err != nil {
-		return []postfixExpr{}, err
+		return []expr{}, err
 	}
-	expressions := make([]postfixExpr, 0)
+	expressions := make([]expr, 0)
 	for rows.Next() {
-		var expr string
-		if err := rows.Scan(&expr); err != nil {
-			return []postfixExpr{}, err
+		var (
+			_expr  string
+			userId int
+		)
+		if err := rows.Scan(&_expr, &userId); err != nil {
+			return []expr{}, err
 		}
-		expressions = append(expressions, postfixExpr(expr))
+		expressions = append(expressions, expr{postfixExpr: postfixExpr(_expr), userId: userId})
 	}
 	return expressions, nil
 }
 
 func newStorage(db *sql.DB) *storage {
+	// get not done expressions
 	expressions, err := getInProcessExpressions(db)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
@@ -55,10 +58,11 @@ func newStorage(db *sql.DB) *storage {
 	s := &storage{
 		db:                 db,
 		computationServers: make(map[string]time.Time, 0),
-		timeouts:           map[string]int{"+": 500, "*": 500, "/": 500, "-": 500, "__wait": 10000},
-		exprQueue:          datastructs.NewQueue[postfixExpr](10),
+		exprQueue:          datastructs.NewQueue[expr](10),
 	}
+	storeTimeout(s.db, "wait", 10000, 0)
 
+	// set not done expressions queue
 	for _, expr := range expressions {
 		s.exprQueue.Enqueue(expr)
 	}
@@ -126,4 +130,9 @@ var (
 type expressionState struct {
 	State  state       `json:"state"`
 	Result interface{} `json:"result"`
+}
+
+type expr struct {
+	postfixExpr
+	userId int
 }
