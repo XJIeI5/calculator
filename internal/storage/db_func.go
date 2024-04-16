@@ -140,3 +140,48 @@ func storeTimeout(db *sql.DB, operand string, value int, userId int) error {
 	}
 	return nil
 }
+
+func getComputes(db *sql.DB) (map[string]int64, error) {
+	var q string = `
+	SELECT address, lastPing FROM computes
+	`
+	res := make(map[string]int64)
+	rows, err := db.Query(q)
+	if err != nil {
+		return res, err
+	}
+	for rows.Next() {
+		var (
+			addr string
+			ping int64
+		)
+		if err := rows.Scan(&addr, &ping); err != nil {
+			return res, err
+		}
+		res[addr] = ping
+	}
+	return res, nil
+}
+
+func deleteCompute(db *sql.DB, addr string) error {
+	var q string = `
+	DELETE FROM computes WHERE address = $1`
+	_, err := db.Exec(q, addr)
+	return err
+}
+
+func storeCompute(db *sql.DB, addr string, lastPing int64) error {
+	var q string = `
+	INSERT INTO computes (address, lastPing) VALUES ($1, $2)
+	`
+	_, err := db.Exec(q, addr, lastPing)
+	return err
+}
+
+func pingCompute(db *sql.DB, addr string, lastPing int64) error {
+	var q string = `
+	UPDATE computes SET lastPing = $1 WHERE address = $2
+	`
+	_, err := db.Exec(q, lastPing, addr)
+	return err
+}
