@@ -32,7 +32,9 @@ func (s *storage) handleRegistCompute(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.computationServers[registerData.Addr] = time.Now()
+	lastPing := time.Now().Unix()
+	s.computationServers[registerData.Addr] = lastPing
+	go storeCompute(s.db, registerData.Addr, lastPing)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -44,12 +46,12 @@ func (s *storage) handleGetCompute(w http.ResponseWriter, r *http.Request) {
 	}
 	states := make([]compState, 0, len(s.computationServers))
 	for _, addr := range s.getWorkingComputationServers() {
-		st := compState{Addr: addr, LastBeat: s.computationServers[addr]}
+		st := compState{Addr: addr, LastBeat: time.Unix(s.computationServers[addr], 0)}
 		waitTime, err := getWaitTime(s.db)
 		if err != nil {
 			panic(err)
 		}
-		if time.Since(s.computationServers[addr]) > waitTime {
+		if time.Since(time.Unix(s.computationServers[addr], 0)) > waitTime {
 			st.State = "lost connection"
 		} else {
 			st.State = "available"
@@ -77,7 +79,9 @@ func (s *storage) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.computationServers[auto.Addr] = time.Now()
+	lastPing := time.Now().Unix()
+	s.computationServers[auto.Addr] = lastPing
+	pingCompute(s.db, auto.Addr, lastPing)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -145,8 +149,9 @@ func (s *storage) cleanComputationServers() {
 			if err != nil {
 				panic(err)
 			}
-			if time.Since(t) > waitTime {
+			if time.Since(time.Unix(t, 0)) > waitTime {
 				delete(s.computationServers, addr)
+				go deleteCompute(s.db, addr)
 			}
 		}
 	}
