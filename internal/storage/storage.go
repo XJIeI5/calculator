@@ -1,14 +1,15 @@
 package storage
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
 	"github.com/gorilla/mux"
@@ -19,9 +20,10 @@ type storage struct {
 	db *sql.DB
 
 	router             *mux.Router
-	computationServers map[string]time.Time
+	computationServers map[string]int64
 
 	exprQueue *datastructs.Queue[expr]
+	addr      string
 
 	mu sync.RWMutex
 }
@@ -48,16 +50,22 @@ func getInProcessExpressions(db *sql.DB) ([]expr, error) {
 	return expressions, nil
 }
 
-func newStorage(db *sql.DB) *storage {
+func newStorage(db *sql.DB, addr string) *storage {
 	// get not done expressions
 	expressions, err := getInProcessExpressions(db)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
 	}
+	// get stored computes
+	computes, err := getComputes(db)
+	if err != nil && err != sql.ErrNoRows {
+		panic(err)
+	}
 
 	s := &storage{
+		addr:               addr,
 		db:                 db,
-		computationServers: make(map[string]time.Time, 0),
+		computationServers: make(map[string]int64, 0),
 		exprQueue:          datastructs.NewQueue[expr](10),
 	}
 	storeTimeout(s.db, "wait", 10000, 0)
@@ -66,6 +74,18 @@ func newStorage(db *sql.DB) *storage {
 	for _, expr := range expressions {
 		s.exprQueue.Enqueue(expr)
 	}
+	// sets computes
+	for addr := range computes {
+		data, err := json.Marshal(struct {
+			Addr string `json:"addr"`
+		}{Addr: addr})
+		if err != nil {
+			panic(err)
+		}
+		http.Post(fmt.Sprintf("%s/regist_compute", s.addr), "application/json", bytes.NewBuffer(data))
+	}
+	s.computationServers = computes
+	fmt.Println(s.computationServers)
 	// background processes
 	go s.calcExpressions()
 	go s.cleanComputationServers()
@@ -102,7 +122,7 @@ func GetServer(addr string, port int, db *sql.DB) *http.Server {
 	}
 	return &http.Server{
 		Addr:    _addr,
-		Handler: newStorage(db),
+		Handler: newStorage(db, addr),
 	}
 }
 
