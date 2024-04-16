@@ -43,15 +43,25 @@ func createTables(ctx context.Context, db *sql.DB) error {
 
 			FOREIGN KEY (userId) REFERENCES users (id)
 		);`
+
+		computeServersTable = `
+		CREATE TABLE IF NOT EXISTS computes(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			address TEXT UNIQUE,
+			lastPing INTEGER
+		);`
 	)
 
-	if _, err := db.ExecContext(ctx, usersTable); err != nil {
+	if _, err := db.Exec(usersTable); err != nil {
 		return err
 	}
-	if _, err := db.ExecContext(ctx, expressionsTable); err != nil {
+	if _, err := db.Exec(expressionsTable); err != nil {
 		return err
 	}
-	if _, err := db.ExecContext(ctx, timeoutsTable); err != nil {
+	if _, err := db.Exec(timeoutsTable); err != nil {
+		return err
+	}
+	if _, err := db.Exec(computeServersTable); err != nil {
 		return err
 	}
 	return nil
