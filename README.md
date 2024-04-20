@@ -282,12 +282,12 @@ class ComputeState {
 ```mermaid
 sequenceDiagram
 participant S as Storage
-participant C as Compute
+participant U as User
 
-S->>C: /get_compute
-activate C
-C->>S: количество незанятых в вычислениях горутин
-deactivate C
+U->>S: /get_compute
+activate S
+S->>U: количество незанятых в вычислениях горутин
+deactivate S
 ```
 
 # Пример
