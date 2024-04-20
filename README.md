@@ -281,8 +281,8 @@ class ComputeState {
 
 ```mermaid
 sequenceDiagram
-participant S as Storage
 participant U as User
+participant S as Storage
 
 U->>S: /get_compute
 activate S
