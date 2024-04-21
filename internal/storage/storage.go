@@ -10,12 +10,12 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
 	"github.com/gorilla/mux"
 )
 
-// TODO: remove expr struct from exprQueue
 type storage struct {
 	db *sql.DB
 
@@ -26,28 +26,6 @@ type storage struct {
 	addr      string
 
 	mu sync.RWMutex
-}
-
-func getInProcessExpressions(db *sql.DB) ([]expr, error) {
-	var q string = `
-	SELECT postfixExpression, userId FROM expressions WHERE status = $1
-	`
-	rows, err := db.Query(q, in_progress)
-	if err != nil {
-		return []expr{}, err
-	}
-	expressions := make([]expr, 0)
-	for rows.Next() {
-		var (
-			_expr  string
-			userId int
-		)
-		if err := rows.Scan(&_expr, &userId); err != nil {
-			return []expr{}, err
-		}
-		expressions = append(expressions, expr{postfixExpr: postfixExpr(_expr), userId: userId})
-	}
-	return expressions, nil
 }
 
 func newStorage(db *sql.DB, addr string) *storage {
@@ -75,6 +53,7 @@ func newStorage(db *sql.DB, addr string) *storage {
 		s.exprQueue.Enqueue(expr)
 	}
 	// sets computes
+	computes["localhost:5000"] = time.Now().Add(2 * time.Minute).Unix()
 	for addr := range computes {
 		data, err := json.Marshal(struct {
 			Addr string `json:"addr"`

@@ -1,0 +1,38 @@
+syntax = "proto3";
+package server;
+
+import "google/api/annotations.proto";
+option go_package = "github.com/XJIeI5/calculator/proto";
+
+message ExecRequest {
+    message BinaryOperationInfo {
+        float a = 1;
+        float b = 2;
+        string op = 3;
+    }
+
+    int32 duration = 1;
+    BinaryOperationInfo op_info = 2;
+}
+
+message ExecResponce {
+    float res = 1;
+}
+
+message RegistRequest {
+    string addr = 1;
+}
+
+message RegistResponse {}
+
+message FreeProcessesRequest {}
+
+message FreeProcessesResponse {
+    int32 FreeProcesses = 1;
+}
+
+service StorageService {
+    rpc Exec (ExecRequest) returns (ExecResponce);
+    rpc FreeProcesses (FreeProcessesRequest) returns (FreeProcessesResponse);
+    // rpc Regist (RegistRequest) returns (RegistResponse) {}
+}

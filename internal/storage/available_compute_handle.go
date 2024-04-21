@@ -1,15 +1,19 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
+
+	pb "github.com/XJIeI5/calculator/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func (s *storage) handleRegistCompute(w http.ResponseWriter, r *http.Request) {
@@ -96,26 +100,19 @@ func (s *storage) getMostFreeComputationServer() (string, error) {
 		wg.Add(1)
 		go func(addr string) {
 			defer wg.Done()
-			resp, err := http.Get(fmt.Sprintf("%s/%s", addr, "free_process"))
-			if err != nil {
-
-				return
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				return
-			}
-			data, err := io.ReadAll(resp.Body)
+			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				return
 			}
-			num, err := strconv.Atoi(string(data))
+			defer conn.Close()
+			client := pb.NewStorageServiceClient(conn)
+			resp, err := client.FreeProcesses(context.TODO(), &pb.FreeProcessesRequest{})
 			if err != nil {
 				return
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			freeProcess[addr] = num
+			freeProcess[addr] = int(resp.FreeProcesses)
 		}(addr)
 	}
 	wg.Wait()

@@ -185,3 +185,25 @@ func pingCompute(db *sql.DB, addr string, lastPing int64) error {
 	_, err := db.Exec(q, lastPing, addr)
 	return err
 }
+
+func getInProcessExpressions(db *sql.DB) ([]expr, error) {
+	var q string = `
+	SELECT postfixExpression, userId FROM expressions WHERE status = $1
+	`
+	rows, err := db.Query(q, in_progress)
+	if err != nil {
+		return []expr{}, err
+	}
+	expressions := make([]expr, 0)
+	for rows.Next() {
+		var (
+			_expr  string
+			userId int
+		)
+		if err := rows.Scan(&_expr, &userId); err != nil {
+			return []expr{}, err
+		}
+		expressions = append(expressions, expr{postfixExpr: postfixExpr(_expr), userId: userId})
+	}
+	return expressions, nil
+}

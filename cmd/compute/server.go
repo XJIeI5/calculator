@@ -3,11 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/XJIeI5/calculator/internal/computation"
+	pb "github.com/XJIeI5/calculator/proto"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -17,9 +20,19 @@ func main() {
 	flag.Parse()
 
 	go func() {
+		server := computation.GetServer(*hostPtr, *portPtr, *parallelPtr)
 		fmt.Printf("run compute server at %s:%d\n", *hostPtr, *portPtr)
-		comp := computation.GetServer(*hostPtr, *portPtr, *parallelPtr)
-		comp.ListenAndServe()
+		lis, err := net.Listen("tcp", server.Addr())
+		if err != nil {
+			panic(err)
+		}
+		grpcServer := grpc.NewServer()
+		pb.RegisterStorageServiceServer(grpcServer, server)
+		if err := grpcServer.Serve(lis); err != nil {
+			panic(err)
+		}
+		// comp := computation.GetServer(*hostPtr, *portPtr, *parallelPtr)
+		// comp.ListenAndServe()
 	}()
 
 	var stopChan = make(chan os.Signal, 2)

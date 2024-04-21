@@ -1,17 +1,19 @@
 package storage
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"unicode"
 
 	op "github.com/XJIeI5/calculator/internal/operation"
 	"github.com/XJIeI5/calculator/internal/parser"
+	pb "github.com/XJIeI5/calculator/proto"
 	"github.com/informitas/stack"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
@@ -179,25 +181,45 @@ func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr, userI
 }
 
 func calculateBinary(addrComp string, dur int, binInfo op.BinaryOperationInfo) (float32, error) {
-	data := struct {
-		Dur                    int `json:"duration"`
-		op.BinaryOperationInfo `json:"op_info"`
-	}{Dur: dur, BinaryOperationInfo: binInfo}
-	byteData, err := json.Marshal(data)
+	conn, err := grpc.Dial(addrComp, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return 0, err
 	}
+	defer conn.Close()
 
-	resp, err := http.Post(fmt.Sprintf("%s/%s", addrComp, "exec"), "application/json", bytes.NewBuffer(byteData))
-	if err != nil {
+	client := pb.NewStorageServiceClient(conn)
+	res, err := client.Exec(context.TODO(), &pb.ExecRequest{
+		Duration: int32(dur),
+		OpInfo: &pb.ExecRequest_BinaryOperationInfo{
+			A:  binInfo.A,
+			B:  binInfo.B,
+			Op: binInfo.Op,
+		},
+	})
+	if res == nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
-	res, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
+	return res.Res, err
 
-	value, err := strconv.ParseFloat(string(res), 32)
-	return float32(value), err
+	// data := struct {
+	// 	Dur                    int `json:"duration"`
+	// 	op.BinaryOperationInfo `json:"op_info"`
+	// }{Dur: dur, BinaryOperationInfo: binInfo}
+	// byteData, err := json.Marshal(data)
+	// if err != nil {
+	// 	return 0, err
+	// }
+
+	// resp, err := http.Post(fmt.Sprintf("%s/%s", addrComp, "exec"), "application/json", bytes.NewBuffer(byteData))
+	// if err != nil {
+	// 	return 0, err
+	// }
+	// defer resp.Body.Close()
+	// res, err := io.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return 0, err
+	// }
+
+	// value, err := strconv.ParseFloat(string(res), 32)
+	// return float32(value), err
 }
