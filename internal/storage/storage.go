@@ -28,28 +28,6 @@ type storage struct {
 	mu sync.RWMutex
 }
 
-func getInProcessExpressions(db *sql.DB) ([]expr, error) {
-	var q string = `
-	SELECT postfixExpression, userId FROM expressions WHERE status = $1
-	`
-	rows, err := db.Query(q, in_progress)
-	if err != nil {
-		return []expr{}, err
-	}
-	expressions := make([]expr, 0)
-	for rows.Next() {
-		var (
-			_expr  string
-			userId int
-		)
-		if err := rows.Scan(&_expr, &userId); err != nil {
-			return []expr{}, err
-		}
-		expressions = append(expressions, expr{postfixExpr: postfixExpr(_expr), userId: userId})
-	}
-	return expressions, nil
-}
-
 func newStorage(db *sql.DB, addr string) *storage {
 	// get not done expressions
 	expressions, err := getInProcessExpressions(db)
@@ -144,7 +122,7 @@ const (
 )
 
 var (
-	key []byte = []byte("secret")
+	key []byte
 )
 
 type expressionState struct {
