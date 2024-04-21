@@ -8,11 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 // TODO: remove expr struct from exprQueue
@@ -28,8 +30,22 @@ type storage struct {
 	mu sync.RWMutex
 }
 
+func initDotenv() {
+	if err := godotenv.Load(); err != nil {
+		panic("No .env file found")
+	}
+
+	val, ok := os.LookupEnv("REGISTER_KEY")
+	if !ok {
+		panic("REGISTER_KEY isn't set")
+	}
+	key = []byte(val)
+}
+
 func newStorage(db *sql.DB, addr string) *storage {
+	initDotenv()
 	// get not done expressions
+
 	expressions, err := getInProcessExpressions(db)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
