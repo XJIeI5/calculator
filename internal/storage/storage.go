@@ -8,11 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 // TODO: remove expr struct from exprQueue
@@ -28,30 +30,22 @@ type storage struct {
 	mu sync.RWMutex
 }
 
-func getInProcessExpressions(db *sql.DB) ([]expr, error) {
-	var q string = `
-	SELECT postfixExpression, userId FROM expressions WHERE status = $1
-	`
-	rows, err := db.Query(q, in_progress)
-	if err != nil {
-		return []expr{}, err
+func initDotenv() {
+	if err := godotenv.Load(); err != nil {
+		panic("No .env file found")
 	}
-	expressions := make([]expr, 0)
-	for rows.Next() {
-		var (
-			_expr  string
-			userId int
-		)
-		if err := rows.Scan(&_expr, &userId); err != nil {
-			return []expr{}, err
-		}
-		expressions = append(expressions, expr{postfixExpr: postfixExpr(_expr), userId: userId})
+
+	val, ok := os.LookupEnv("REGISTER_KEY")
+	if !ok {
+		panic("REGISTER_KEY isn't set")
 	}
-	return expressions, nil
+	key = []byte(val)
 }
 
 func newStorage(db *sql.DB, addr string) *storage {
+	initDotenv()
 	// get not done expressions
+
 	expressions, err := getInProcessExpressions(db)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
@@ -144,7 +138,7 @@ const (
 )
 
 var (
-	key []byte = []byte("secret")
+	key []byte
 )
 
 type expressionState struct {
