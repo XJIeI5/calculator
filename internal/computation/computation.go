@@ -137,6 +137,10 @@ func (c *computationServer) handleRegist(w http.ResponseWriter, r *http.Request)
 
 func (c *computationServer) beat() {
 	ticker := time.NewTicker(time.Second * 1)
+	leaveStorage := func() {
+		c.storageAddr = ""
+		ticker.Stop()
+	}
 loop:
 	for {
 		select {
@@ -148,9 +152,12 @@ loop:
 			}
 			b, _ := json.Marshal(data)
 			resp, err := http.Post(fmt.Sprintf("%s/heart", c.storageAddr), "application/json", bytes.NewBuffer(b))
+			if resp == nil {
+				leaveStorage()
+				break loop
+			}
 			if resp.StatusCode != http.StatusOK || err != nil {
-				c.storageAddr = ""
-				ticker.Stop()
+				leaveStorage()
 				break loop
 			}
 		}

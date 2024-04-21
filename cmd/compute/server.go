@@ -13,7 +13,7 @@ import (
 func main() {
 	parallelPtr := flag.Int("pc", 10, "amount of parallel calculations")
 	hostPtr := flag.String("host", "http://localhost", "host of server")
-	portPtr := flag.Int("port", 8080, "port of server")
+	portPtr := flag.Int("port", 5000, "port of server")
 	flag.Parse()
 
 	go func() {

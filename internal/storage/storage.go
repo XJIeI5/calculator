@@ -1,37 +1,91 @@
 package storage
 
 import (
+	"bytes"
 	"crypto/sha1"
+	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	datastructs "github.com/XJIeI5/calculator/internal/datastructs"
 	"github.com/gorilla/mux"
 )
 
+// TODO: remove expr struct from exprQueue
 type storage struct {
-	router             *mux.Router
-	computationServers map[string]time.Time
-	timeouts           map[string]int
-	expressions        *sync.Map
+	db *sql.DB
 
-	exprQueue *datastructs.Queue[postfixExpr]
+	router             *mux.Router
+	computationServers map[string]int64
+
+	exprQueue *datastructs.Queue[expr]
+	addr      string
 
 	mu sync.RWMutex
 }
 
-func newStorage() *storage {
-	s := &storage{
-		expressions:        &sync.Map{},
-		computationServers: make(map[string]time.Time, 0),
-		timeouts:           map[string]int{"+": 500, "*": 500, "/": 500, "-": 500, "__wait": 10000},
-		exprQueue:          datastructs.NewQueue[postfixExpr](10),
+func getInProcessExpressions(db *sql.DB) ([]expr, error) {
+	var q string = `
+	SELECT postfixExpression, userId FROM expressions WHERE status = $1
+	`
+	rows, err := db.Query(q, in_progress)
+	if err != nil {
+		return []expr{}, err
+	}
+	expressions := make([]expr, 0)
+	for rows.Next() {
+		var (
+			_expr  string
+			userId int
+		)
+		if err := rows.Scan(&_expr, &userId); err != nil {
+			return []expr{}, err
+		}
+		expressions = append(expressions, expr{postfixExpr: postfixExpr(_expr), userId: userId})
+	}
+	return expressions, nil
+}
+
+func newStorage(db *sql.DB, addr string) *storage {
+	// get not done expressions
+	expressions, err := getInProcessExpressions(db)
+	if err != nil && err != sql.ErrNoRows {
+		panic(err)
+	}
+	// get stored computes
+	computes, err := getComputes(db)
+	if err != nil && err != sql.ErrNoRows {
+		panic(err)
 	}
 
+	s := &storage{
+		addr:               addr,
+		db:                 db,
+		computationServers: make(map[string]int64, 0),
+		exprQueue:          datastructs.NewQueue[expr](10),
+	}
+	storeTimeout(s.db, "wait", 10000, 0)
+
+	// set not done expressions queue
+	for _, expr := range expressions {
+		s.exprQueue.Enqueue(expr)
+	}
+	// sets computes
+	for addr := range computes {
+		data, err := json.Marshal(struct {
+			Addr string `json:"addr"`
+		}{Addr: addr})
+		if err != nil {
+			panic(err)
+		}
+		http.Post(fmt.Sprintf("%s/regist_compute", s.addr), "application/json", bytes.NewBuffer(data))
+	}
+	s.computationServers = computes
+	fmt.Println(s.computationServers)
 	// background processes
 	go s.calcExpressions()
 	go s.cleanComputationServers()
@@ -46,6 +100,9 @@ func newStorage() *storage {
 	r.HandleFunc("/get_compute", s.handleGetCompute).Methods("GET")
 	// timeout handle
 	r.HandleFunc("/set_timeout", s.handleSetTimeouts).Methods("POST")
+	// login
+	r.HandleFunc("/regist_user", s.handleRegister).Methods("POST")
+	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 
 	s.router = r
 
@@ -56,7 +113,7 @@ func (s *storage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func GetServer(addr string, port int) *http.Server {
+func GetServer(addr string, port int, db *sql.DB) *http.Server {
 	var _addr string
 	if strings.Contains(addr, "localhost") || strings.Contains(addr, "127.0.0.1") {
 		_addr = fmt.Sprintf(":%d", port)
@@ -65,7 +122,7 @@ func GetServer(addr string, port int) *http.Server {
 	}
 	return &http.Server{
 		Addr:    _addr,
-		Handler: newStorage(),
+		Handler: newStorage(db, addr),
 	}
 }
 
@@ -86,7 +143,16 @@ const (
 	ok          state = "ok"
 )
 
+var (
+	key []byte = []byte("secret")
+)
+
 type expressionState struct {
 	State  state       `json:"state"`
 	Result interface{} `json:"result"`
+}
+
+type expr struct {
+	postfixExpr
+	userId int
 }

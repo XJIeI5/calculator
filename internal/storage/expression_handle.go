@@ -19,37 +19,55 @@ func (s *storage) handleAddExpression(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	if t := r.Header.Get("Authorization"); t == "" {
+		http.Error(w, "unknown user", http.StatusBadRequest)
+		return
+	}
 	if len(s.computationServers) == 0 {
 		http.Error(w, "no computation servers registered", http.StatusBadRequest)
 		return
 	}
 
-	expr := struct {
+	_expr := struct {
 		Value string `json:"expr"`
 	}{}
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&expr)
+	err := decoder.Decode(&_expr)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	parsedExpr, err := parser.ParseToPostfix(expr.Value)
+	parsedExpr, err := parser.ParseToPostfix(_expr.Value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	id := getHash(parsedExpr)
-	if _, ok := s.expressions.Load(id); ok {
-		w.Write([]byte(strconv.FormatInt(int64(id), 10)))
+	hash := getHash(parsedExpr)
+	bearerToken := r.Header.Get("Authorization")
+
+	if id, err := checkExpressionExists(s.db, hash, bearerToken); err == nil {
+		w.Write([]byte(strconv.FormatInt(id, 10)))
+		fmt.Println("again")
 		return
 	}
-	s.expressions.Store(id, &expressionState{State: in_progress, Result: nil})
-	go s.exprQueue.Enqueue(postfixExpr(parsedExpr))
+	go func() {
+		userId, err := getUserId(bearerToken)
+		if err != nil {
+			panic(err)
+		}
+		s.exprQueue.Enqueue(expr{postfixExpr: postfixExpr(parsedExpr), userId: userId})
+	}()
+
+	id, err := storeExpressionState(s.db, in_progress, nil, bearerToken, postfixExpr(parsedExpr))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Write([]byte(strconv.FormatInt(int64(id), 10)))
 }
 
@@ -61,9 +79,10 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	st, ok := s.expressions.Load(exprHash(id))
-	if !ok {
+	st, err := getExpressionState(s.db, id)
+	if err != nil {
 		http.Error(w, fmt.Sprintf("no expr with id %d", id), http.StatusBadRequest)
+		return
 	}
 	data, err := json.Marshal(st)
 	if err != nil {
@@ -75,33 +94,35 @@ func (s *storage) handleGetResult(w http.ResponseWriter, r *http.Request) {
 
 func (s *storage) calcExpressions() {
 	for {
-		expr, err := s.exprQueue.Dequeue()
+		_expr, err := s.exprQueue.Dequeue()
 		if err != nil {
 			continue
 		}
 		// waiting for expression then start calculation
 		go func() {
-			hashSum := getHash(string(expr))
+			hashSum := getHash(string(_expr.postfixExpr))
 			compAddr, err := s.getMostFreeComputationServer()
 			if err != nil {
-				s.expressions.Store(hashSum, &expressionState{State: has_error, Result: err.Error()})
+				updateExpressionState(s.db, has_error, err.Error(), hashSum)
+				s.exprQueue.Enqueue(_expr)
 				return
 			}
 			fmt.Println(compAddr)
-			errs, res := s.calculateInSync(compAddr, expr)
+			errs, res := s.calculateInSync(compAddr, _expr.postfixExpr, _expr.userId)
 			for err := range errs {
 				if err != nil {
-					s.expressions.Store(hashSum, &expressionState{State: has_error, Result: err.Error()})
+					updateExpressionState(s.db, has_error, err.Error(), hashSum)
 					return
 				}
 			}
 
-			s.expressions.Store(hashSum, &expressionState{State: ok, Result: <-res})
+			result := <-res
+			updateExpressionState(s.db, ok, result, hashSum)
 		}()
 	}
 }
 
-func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr) (<-chan error, <-chan float32) {
+func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr, userId int) (<-chan error, <-chan float32) {
 	errs := make(chan error)
 	out := make(chan float32, 1)
 	go func(expr string) {
@@ -128,15 +149,16 @@ func (s *storage) calculateInSync(addrCompServer string, expr postfixExpr) (<-ch
 			} else {
 				operand := parser.GetOperand(expr[i:])
 				if operand == nil {
-					errs <- fmt.Errorf("unknown operand '%s'", operand.Symbol())
+					errs <- fmt.Errorf("unknown operand")
 					return
 				}
 				skip = len(operand.Symbol()) - 1
-				if duration, ok := s.timeouts[string(r)]; ok {
+				duration, err := getOperandTime(s.db, string(r), userId)
+				if err == nil {
 					second, _ := locals.Pop()
 					first, _ := locals.Pop()
 					info := op.BinaryOperationInfo{A: <-first, B: <-second, Op: operand.Symbol()}
-					res, err := calculateBinary(addrCompServer, duration, info)
+					res, err := calculateBinary(addrCompServer, int(duration.Milliseconds()), info)
 					if err != nil {
 						errs <- err
 						return
