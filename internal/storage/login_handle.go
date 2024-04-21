@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type registerUser struct {
@@ -24,8 +25,12 @@ func (s *storage) handleRegister(w http.ResponseWriter, r *http.Request) {
 	q := `
 	INSERT INTO users (login, hashedPassword) VALUES ($1, $2)
 	`
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(register.Password), 14)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
-	res, err := s.db.Exec(q, register.Login, register.Password)
+	res, err := s.db.Exec(q, register.Login, hashedPassword)
 	if err != nil {
 		panic(err)
 	}
@@ -62,16 +67,16 @@ func (s *storage) handleLogin(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var (
-		correctPassword string
-		id              int
+		hashedPassword string
+		id             int
 	)
 	rows.Next()
-	if err := rows.Scan(&correctPassword, &id); err != nil {
+	if err := rows.Scan(&hashedPassword, &id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if correctPassword != register.Password {
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(register.Password)); err != nil {
 		http.Error(w, "incorrect password", http.StatusBadRequest)
 		return
 	}
